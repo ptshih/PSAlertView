@@ -322,6 +322,10 @@ buttons = _buttons;
 }
 
 - (void)dismiss:(BOOL)animated {
+    if (self.textField) {
+        [self.textField resignFirstResponder];
+    }
+    
     [UIView animateWithDuration: 0.2 
                      animations: ^{
                          self.alertWindow.alpha = 0.0;
