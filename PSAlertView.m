@@ -363,12 +363,12 @@ buttons = _buttons;
     
     // Optional Email Hyperlink
     if (self.emailButton) {
-        top += MARGIN_Y / 2.0;
+        top += MARGIN_Y;
         
         self.emailButton.frame = CGRectMake(left, top, width, 16.0);
         
         top += 16.0;
-        top += MARGIN_Y / 2.0;
+        top += MARGIN_Y * 0.75;
     }
     
     top += MARGIN_Y;
@@ -447,6 +447,7 @@ buttons = _buttons;
     self.titleLabel.text = @"Save For Later";
     self.messageLabel.text = @"Enter your email address and we'll send you a link to this deal.";
     [self addTextFieldWithPlaceholder:@"Your Email Address"];
+    self.textField.keyboardType = UIKeyboardTypeEmailAddress;
     
     [self relayoutViews];
 }
