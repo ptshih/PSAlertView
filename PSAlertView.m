@@ -14,25 +14,9 @@
 // UIWindow
 @interface PSAlertViewWindow : UIWindow
 
-@property (nonatomic, retain) UIWindow *oldKeyWindow;
-
 @end
 
 @implementation PSAlertViewWindow
-
-@synthesize
-oldKeyWindow = _oldKeyWindow;
-
-- (void)makeKeyAndVisible {
-    self.oldKeyWindow = [[UIApplication sharedApplication] keyWindow];
-    self.windowLevel = UIWindowLevelAlert;
-    [super makeKeyAndVisible];
-}
-
-- (void)resignKeyWindow {
-    [super resignKeyWindow];
-    [self.oldKeyWindow makeKeyWindow];
-}
 
 - (void)drawRect:(CGRect)rect {
     // render the radial gradient behind the alertview
@@ -58,8 +42,6 @@ oldKeyWindow = _oldKeyWindow;
 }
 
 - (void)dealloc {
-    self.oldKeyWindow = nil;
-    
     [super dealloc];
 }
 
@@ -167,6 +149,7 @@ buttons = _buttons;
         
         // Window
         self.alertWindow = [[[PSAlertViewWindow alloc] initWithFrame:[UIScreen mainScreen].bounds] autorelease];
+        self.alertWindow.windowLevel = UIWindowLevelAlert;
         self.alertWindow.backgroundColor = [UIColor clearColor];
         [self.alertWindow addSubview:self];
         
