@@ -10,12 +10,10 @@
 
 typedef void (^PSAlertViewCompletionBlock)(NSUInteger buttonIndex, NSString *textFieldValue);
 
-typedef void (^PSAlertViewEmailCompletionBlock)(NSUInteger buttonIndex, NSString *emailFieldValue);
-
 @interface PSAlertView : UIView
 
 + (void)showWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles textFieldPlaceholder:(NSString *)textFieldPlaceholder completionBlock:(PSAlertViewCompletionBlock)completionBlock;
 
-+ (void)showWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewEmailCompletionBlock)completionBlock;
++ (void)showWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewCompletionBlock)completionBlock;
 
 @end

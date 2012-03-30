@@ -10,6 +10,8 @@
 
 #define MARGIN_X 10.0
 #define MARGIN_Y 16.0
+#define BUTTON_HEIGHT 43.0
+#define TEXTFIELD_HEIGHT 31.0
 
 #define PSALERTVIEW_RGBCOLOR(R,G,B) [UIColor colorWithRed:R/255.0 green:G/255.0 blue:B/255.0 alpha:1.0]
 
@@ -23,12 +25,12 @@
 - (void)drawRect:(CGRect)rect {
     // render the radial gradient behind the alertview
     
-    CGFloat width			= self.frame.size.width;
-    CGFloat height			= self.frame.size.height;
-    CGFloat locations[3]	= { 0.0, 0.5, 1.0 	};
-    CGFloat components[12]	= {	1, 1, 1, 0.5,
+    CGFloat width = self.frame.size.width;
+    CGFloat height = self.frame.size.height;
+    CGFloat locations[3] = { 0.0, 0.5, 1.0 };
+    CGFloat components[12] = { 1, 1, 1, 0.5,
         0, 0, 0, 0.5,
-        0, 0, 0, 0.7	};
+        0, 0, 0, 0.7 };
     
     CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
     CGGradientRef backgroundGradient = CGGradientCreateWithColorComponents(colorspace, components, locations, 3);
@@ -104,13 +106,22 @@
 // PSAlertView
 @interface PSAlertView () <UITextFieldDelegate>
 
+/**
+ This is the designated initializer. It is called to instantiate all the required UI elements (title, message, buttons)
+ */
 - (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles completionBlock:(PSAlertViewCompletionBlock)completionBlock;
 
+/**
+ This initializes an alert view with an in-line text-field
+ */
 - (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles textFieldPlaceholder:(NSString *)textFieldPlaceholder completionBlock:(PSAlertViewCompletionBlock)completionBlock;
 
-- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewEmailCompletionBlock)completionBlock;
+/**
+ This initializes an alert view with an email me link below the buttons
+ */
+- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewCompletionBlock)completionBlock;
 
-// Show/Dismiss View
+// Show/Dismiss alert view
 - (void)show:(BOOL)animated;
 - (void)dismiss:(BOOL)animated;
 
@@ -123,6 +134,7 @@
 - (void)addEmailButtonWithText:(NSString *)text;
 - (NSInteger)addButtonWithTitle:(NSString *)title;
 
+// (Re)Layout the view
 - (void)relayoutViews;
 
 @property (nonatomic, copy) PSAlertViewCompletionBlock completionBlock;
@@ -157,7 +169,7 @@ buttons = _buttons;
     [av show:YES];
 }
 
-+ (void)showWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewEmailCompletionBlock)completionBlock {
++ (void)showWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewCompletionBlock)completionBlock {
     
     NSAssert([buttonTitles count] <= 2, @"PSAlertView only supports up to 2 buttons");
     
@@ -226,13 +238,13 @@ buttons = _buttons;
         if (textFieldPlaceholder) {
             [self addTextFieldWithPlaceholder:textFieldPlaceholder];
         }
-    
+        
         [self relayoutViews];
     }
     return self;
 }
 
-- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewEmailCompletionBlock)completionBlock {
+- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewCompletionBlock)completionBlock {
     self = [self initWithTitle:title message:message buttonTitles:buttonTitles completionBlock:completionBlock];
     if (self) {
         // Optional Email Hyperlink Button
@@ -248,14 +260,17 @@ buttons = _buttons;
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     
-    Block_release(self.completionBlock);
-    self.alertWindow = nil;
+    if (self.completionBlock) {
+        Block_release(self.completionBlock);
+    }
+    
     self.textField.delegate = nil;
     self.textField = nil;
+    self.emailButton = nil;
     self.titleLabel = nil;
     self.messageLabel = nil;
-    self.emailButton = nil;
     self.buttons = nil;
+    self.alertWindow = nil;
     [super dealloc];
 }
 
@@ -346,9 +361,9 @@ buttons = _buttons;
     
     // Optional Text Field
     if (self.textField) {
-        self.textField.frame = CGRectMake(left, top, width, 31.0);
+        self.textField.frame = CGRectMake(left, top, width, TEXTFIELD_HEIGHT);
         
-        top += 31.0;
+        top += TEXTFIELD_HEIGHT;
         top += MARGIN_Y / 2.0;
     }
     
@@ -357,10 +372,10 @@ buttons = _buttons;
     CGFloat buttonMargin = (MARGIN_X / 2.0) * (numButtons - 1);
     CGFloat buttonWidth = floorf((width - buttonMargin) / numButtons);
     [self.buttons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, BOOL *stop) {
-        button.frame = CGRectMake(left + (idx * (MARGIN_X / 2.0)) + (idx * buttonWidth), top, buttonWidth, 43.0);
+        button.frame = CGRectMake(left + (idx * (MARGIN_X / 2.0)) + (idx * buttonWidth), top, buttonWidth, BUTTON_HEIGHT);
     }];
     
-    top += 43.0;
+    top += BUTTON_HEIGHT;
     
     // Optional Email Hyperlink
     if (self.emailButton) {
@@ -391,27 +406,19 @@ buttons = _buttons;
     self.alertWindow.alpha = 0.0;
     [self.alertWindow makeKeyAndVisible];
     
-//    UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
-//    [keyWindow addSubview:self];
-    
     self.transform = CGAffineTransformMakeScale(0.6, 0.6);
-    [UIView animateWithDuration: 0.2 
-                     animations: ^{
-                         self.alertWindow.alpha = 1.0;
-                         self.transform = CGAffineTransformMakeScale(1.1, 1.1);
-                     }
-                     completion: ^(BOOL finished){
-                         [UIView animateWithDuration:1.0/15.0
-                                          animations: ^{
-                                              self.transform = CGAffineTransformMakeScale(0.9, 0.9);
-                                          }
-                                          completion: ^(BOOL finished){
-                                              [UIView animateWithDuration:1.0/7.5
-                                                               animations: ^{
-                                                                   self.transform = CGAffineTransformIdentity;
-                                                               }];
-                                          }];
-                     }];
+    [UIView animateWithDuration:0.2 animations:^{
+        self.alertWindow.alpha = 1.0;
+        self.transform = CGAffineTransformMakeScale(1.1, 1.1);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:1.0/15.0 animations:^{
+            self.transform = CGAffineTransformMakeScale(0.9, 0.9);
+        } completion:^(BOOL finished) {
+            [UIView animateWithDuration:1.0/7.5 animations:^{
+                self.transform =CGAffineTransformIdentity;
+            }];
+        }];
+    }];
 }
 
 - (void)dismiss:(BOOL)animated {
@@ -419,13 +426,11 @@ buttons = _buttons;
         [self.textField resignFirstResponder];
     }
     
-    [UIView animateWithDuration: 0.2 
-                     animations: ^{
-                         self.alertWindow.alpha = 0.0;
-                     }
-                     completion: ^(BOOL finished){
-                         self.alertWindow = nil;
-                     }];
+    [UIView animateWithDuration:0.2 animations:^{
+        self.alertWindow.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        self.alertWindow = nil;
+    }];
 }
 
 - (void)buttonSelected:(UIButton *)button {
@@ -435,7 +440,9 @@ buttons = _buttons;
     if (self.textField) {
         textFieldValue = self.textField.text;
     }
-    self.completionBlock(buttonIndex, textFieldValue);
+    if (self.completionBlock) {
+        self.completionBlock(buttonIndex, textFieldValue);
+    }
     [self dismiss:YES];
 }
 
@@ -447,7 +454,6 @@ buttons = _buttons;
 
 #pragma mark - Positioning (Rotation and Keyboard)
 - (void)positionSelf:(NSNotification*)notification {
-    
     CGFloat keyboardHeight;
     NSTimeInterval animationDuration;
     UIViewAnimationCurve animationCurve;
@@ -460,7 +466,7 @@ buttons = _buttons;
     [[keyboardInfo objectForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&animationDuration];
     [[keyboardInfo objectForKey:UIKeyboardAnimationCurveUserInfoKey] getValue:&animationCurve];
     
-    if(notification.name == UIKeyboardWillShowNotification || notification.name == UIKeyboardDidShowNotification) {
+    if (notification.name == UIKeyboardWillShowNotification || notification.name == UIKeyboardDidShowNotification) {
         if(UIInterfaceOrientationIsPortrait(orientation))
             keyboardHeight = keyboardFrame.size.height;
         else
@@ -471,7 +477,7 @@ buttons = _buttons;
     CGRect orientationFrame = [UIScreen mainScreen].bounds;
     CGRect statusBarFrame = [UIApplication sharedApplication].statusBarFrame;
     
-    if(UIInterfaceOrientationIsLandscape(orientation)) {
+    if (UIInterfaceOrientationIsLandscape(orientation)) {
         CGFloat temp = orientationFrame.size.width;
         orientationFrame.size.width = orientationFrame.size.height;
         orientationFrame.size.height = temp;
@@ -509,12 +515,9 @@ buttons = _buttons;
             break;
     } 
     
-    [UIView animateWithDuration:animationDuration 
-                          delay:0 
-                        options:UIViewAnimationOptionAllowUserInteraction 
-                     animations:^{
-                         [self moveToPoint:newCenter rotateAngle:rotateAngle];
-                     } completion:NULL];
+    [UIView animateWithDuration:animationDuration delay:0.0 options:UIViewAnimationOptionAllowUserInteraction animations:^{
+        [self moveToPoint:newCenter rotateAngle:rotateAngle];
+    } completion:NULL];
     
 }
 
