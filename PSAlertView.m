@@ -11,6 +11,8 @@
 #define MARGIN_X 10.0
 #define MARGIN_Y 16.0
 
+#define PSALERTVIEW_RGBCOLOR(R,G,B) [UIColor colorWithRed:R/255.0 green:G/255.0 blue:B/255.0 alpha:1.0]
+
 // UIWindow
 @interface PSAlertViewWindow : UIWindow
 
@@ -102,13 +104,26 @@
 // PSAlertView
 @interface PSAlertView () <UITextFieldDelegate>
 
+- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles completionBlock:(PSAlertViewCompletionBlock)completionBlock;
+
 - (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles textFieldPlaceholder:(NSString *)textFieldPlaceholder completionBlock:(PSAlertViewCompletionBlock)completionBlock;
 
+- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewEmailCompletionBlock)completionBlock;
+
+// Show/Dismiss View
 - (void)show:(BOOL)animated;
 - (void)dismiss:(BOOL)animated;
-- (void)buttonSelected:(UIButton *)button;
 
+// Button actions
+- (void)buttonSelected:(UIButton *)button;
+- (void)email:(UIButton *)button;
+
+// Create UI Elements
+- (void)addTextFieldWithPlaceholder:(NSString *)placeholder;
+- (void)addEmailButtonWithText:(NSString *)text;
 - (NSInteger)addButtonWithTitle:(NSString *)title;
+
+- (void)relayoutViews;
 
 @property (nonatomic, copy) PSAlertViewCompletionBlock completionBlock;
 @property (nonatomic, retain) UIWindow *alertWindow;
@@ -116,6 +131,7 @@
 @property (nonatomic, retain) UILabel *titleLabel;
 @property (nonatomic, retain) UILabel *messageLabel;
 @property (nonatomic, retain) PSAlertViewTextField *textField;
+@property (nonatomic, retain) UIButton *emailButton;
 @property (nonatomic, retain) NSMutableArray *buttons;
 
 @end
@@ -129,6 +145,7 @@ backgroundView = _backgroundView,
 titleLabel = _titleLabel,
 messageLabel = _messageLabel,
 textField = _textField,
+emailButton = _emailButton,
 buttons = _buttons;
 
 #pragma mark - Show with block
@@ -140,21 +157,30 @@ buttons = _buttons;
     [av show:YES];
 }
 
-- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles textFieldPlaceholder:(NSString *)textFieldPlaceholder completionBlock:(PSAlertViewCompletionBlock)completionBlock {
++ (void)showWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewEmailCompletionBlock)completionBlock {
+    
+    NSAssert([buttonTitles count] <= 2, @"PSAlertView only supports up to 2 buttons");
+    
+    PSAlertView *av = [[[PSAlertView alloc] initWithTitle:title message:message buttonTitles:buttonTitles emailText:emailText completionBlock:completionBlock] autorelease];
+    [av show:YES];
+}
+
+#pragma mark - Init
+- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles completionBlock:(PSAlertViewCompletionBlock)completionBlock {
     self = [super initWithFrame:CGRectZero];
     if (self) {
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(positionSelf:) name:UIKeyboardWillShowNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(positionSelf:) name:UIKeyboardWillHideNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(positionSelf:) name:UIApplicationDidChangeStatusBarOrientationNotification object:nil];
         
+        // Completion Block
+        self.completionBlock = completionBlock; // copy
+        
         // Window
         self.alertWindow = [[[PSAlertViewWindow alloc] initWithFrame:[UIScreen mainScreen].bounds] autorelease];
         self.alertWindow.windowLevel = UIWindowLevelAlert;
         self.alertWindow.backgroundColor = [UIColor clearColor];
         [self.alertWindow addSubview:self];
-        
-        // Completion Block
-        self.completionBlock = completionBlock; // copy
         
         // Background Image
         self.backgroundView = [[[UIImageView alloc] initWithImage:[[UIImage imageNamed:@"PSAlertView.bundle/Background.png"] stretchableImageWithLeftCapWidth:0 topCapHeight:40]] autorelease];
@@ -189,67 +215,32 @@ buttons = _buttons;
         for (NSString *buttonTitle in buttonTitles) {
             [self addButtonWithTitle:buttonTitle];
         }
-        
+    }
+    return self;
+}
+
+- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles textFieldPlaceholder:(NSString *)textFieldPlaceholder completionBlock:(PSAlertViewCompletionBlock)completionBlock {
+    self = [self initWithTitle:title message:message buttonTitles:buttonTitles completionBlock:completionBlock];
+    if (self) {
         // Optional Text Field
         if (textFieldPlaceholder) {
-            self.textField = [[[PSAlertViewTextField alloc] initWithFrame:CGRectZero] autorelease];
-            self.textField.background = [[UIImage imageNamed:@"PSAlertView.bundle/TextFieldBackground.png"] stretchableImageWithLeftCapWidth:1 topCapHeight:0];
-            self.textField.placeholder = textFieldPlaceholder;
-            self.textField.autocorrectionType = UITextAutocorrectionTypeNo;
-            self.textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
-            self.textField.font = [UIFont systemFontOfSize:16.0];
-            self.textField.clearButtonMode = UITextFieldViewModeWhileEditing;
-            self.textField.keyboardAppearance = UIKeyboardAppearanceAlert;
-            self.textField.delegate = self;
-            [self addSubview:self.textField];
+            [self addTextFieldWithPlaceholder:textFieldPlaceholder];
         }
     
-        // Layout
-        CGFloat left = MARGIN_X;
-        CGFloat top = MARGIN_Y;
-        CGFloat width = 284.0 - MARGIN_X * 2;
-        CGSize labelSize = CGSizeZero;
-        
-        // Title and Message
-        labelSize = [UILabel sizeForText:self.titleLabel.text width:width font:self.titleLabel.font numberOfLines:self.titleLabel.numberOfLines lineBreakMode:self.titleLabel.lineBreakMode];
-        self.titleLabel.frame = CGRectMake(left, top, width, labelSize.height);
-        
-        top += labelSize.height;
-        top += MARGIN_Y / 4.0;
-        
-        labelSize = [UILabel sizeForText:self.messageLabel.text width:width font:self.messageLabel.font numberOfLines:self.messageLabel.numberOfLines lineBreakMode:self.messageLabel.lineBreakMode];
-        self.messageLabel.frame = CGRectMake(left, top, width, labelSize.height);
-        
-        top += labelSize.height;
-        top += MARGIN_Y / 2.0;
-        
-        // Optional Text Field
-        if (self.textField) {
-            self.textField.frame = CGRectMake(left, top, width, 31.0);
-            
-            top += 31.0;
-            top += MARGIN_Y / 2.0;
+        [self relayoutViews];
+    }
+    return self;
+}
+
+- (id)initWithTitle:(NSString *)title message:(NSString *)message buttonTitles:(NSArray *)buttonTitles emailText:(NSString *)emailText completionBlock:(PSAlertViewEmailCompletionBlock)completionBlock {
+    self = [self initWithTitle:title message:message buttonTitles:buttonTitles completionBlock:completionBlock];
+    if (self) {
+        // Optional Email Hyperlink Button
+        if (emailText) {
+            [self addEmailButtonWithText:emailText];
         }
         
-        // Buttons
-        NSUInteger numButtons = self.buttons.count;
-        CGFloat buttonMargin = (MARGIN_X / 2.0) * (numButtons - 1);
-        CGFloat buttonWidth = floorf((width - buttonMargin) / numButtons);
-        [self.buttons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, BOOL *stop) {
-            button.frame = CGRectMake(left + (idx * (MARGIN_X / 2.0)) + (idx * buttonWidth), top, buttonWidth, 43.0);
-        }];
-        
-        top += 43.0;
-        
-        top += MARGIN_Y;
-        
-        CGFloat superWidth = [[UIApplication sharedApplication] keyWindow].frame.size.width;
-        CGFloat superHeight = [[UIApplication sharedApplication] keyWindow].frame.size.height - [[UIApplication sharedApplication] statusBarFrame].size.height;
-        CGFloat newLeft = floorf((superWidth - 284) / 2.0);
-        CGFloat newTop = floorf((superHeight - top) / 2.0) + [[UIApplication sharedApplication] statusBarFrame].size.height;
-        self.frame = CGRectMake(newLeft, newTop, 284, top);
-        
-        self.backgroundView.frame = self.bounds;
+        [self relayoutViews];
     }
     return self;
 }
@@ -263,8 +254,35 @@ buttons = _buttons;
     self.textField = nil;
     self.titleLabel = nil;
     self.messageLabel = nil;
+    self.emailButton = nil;
     self.buttons = nil;
     [super dealloc];
+}
+
+#pragma mark - Create UI Elements
+- (void)addTextFieldWithPlaceholder:(NSString *)placeholder {
+    self.textField = [[[PSAlertViewTextField alloc] initWithFrame:CGRectZero] autorelease];
+    self.textField.background = [[UIImage imageNamed:@"PSAlertView.bundle/TextFieldBackground.png"] stretchableImageWithLeftCapWidth:1 topCapHeight:0];
+    self.textField.placeholder = placeholder;
+    self.textField.autocorrectionType = UITextAutocorrectionTypeNo;
+    self.textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    self.textField.font = [UIFont systemFontOfSize:16.0];
+    self.textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    self.textField.keyboardAppearance = UIKeyboardAppearanceAlert;
+    self.textField.delegate = self;
+    [self addSubview:self.textField];
+}
+
+- (void)addEmailButtonWithText:(NSString *)text {
+    self.emailButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.emailButton.backgroundColor = [UIColor clearColor];
+    [self.emailButton setTitleColor:PSALERTVIEW_RGBCOLOR(129, 159, 252) forState:UIControlStateNormal];
+    [self.emailButton setTitleShadowColor:[UIColor blackColor] forState:UIControlStateNormal];
+    [self.emailButton setTitle:text forState:UIControlStateNormal];
+    [self.emailButton addTarget:self action:@selector(email:) forControlEvents:UIControlEventTouchUpInside];
+    self.emailButton.titleLabel.shadowOffset = CGSizeMake(0.0, -0.5);
+    self.emailButton.titleLabel.font = [UIFont systemFontOfSize:14.0];
+    [self addSubview:self.emailButton];
 }
 
 - (NSInteger)addButtonWithTitle:(NSString *)title {
@@ -284,10 +302,85 @@ buttons = _buttons;
     return (self.buttons.count - 1);
 }
 
+- (void)email:(UIButton *)button {
+    [self.emailButton removeFromSuperview];
+    self.emailButton = nil;
+    
+    [self.buttons makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    [self.buttons removeAllObjects];
+    [self addButtonWithTitle:@"Nevermind"];
+    [self addButtonWithTitle:@"Save"];
+    
+    self.titleLabel.text = @"Save For Later";
+    self.messageLabel.text = @"Enter your email address and we'll send you a link to this deal.";
+    [self addTextFieldWithPlaceholder:@"Your Email Address"];
+    
+    [self relayoutViews];
+}
+
 #pragma mark - Layout
 - (void)layoutSubviews {
     [super layoutSubviews];
     
+}
+
+- (void)relayoutViews {
+    // Layout
+    CGFloat left = MARGIN_X;
+    CGFloat top = MARGIN_Y;
+    CGFloat width = 284.0 - MARGIN_X * 2;
+    CGSize labelSize = CGSizeZero;
+    
+    // Title and Message
+    labelSize = [UILabel sizeForText:self.titleLabel.text width:width font:self.titleLabel.font numberOfLines:self.titleLabel.numberOfLines lineBreakMode:self.titleLabel.lineBreakMode];
+    self.titleLabel.frame = CGRectMake(left, top, width, labelSize.height);
+    
+    top += labelSize.height;
+    top += MARGIN_Y / 4.0;
+    
+    labelSize = [UILabel sizeForText:self.messageLabel.text width:width font:self.messageLabel.font numberOfLines:self.messageLabel.numberOfLines lineBreakMode:self.messageLabel.lineBreakMode];
+    self.messageLabel.frame = CGRectMake(left, top, width, labelSize.height);
+    
+    top += labelSize.height;
+    top += MARGIN_Y / 2.0;
+    
+    // Optional Text Field
+    if (self.textField) {
+        self.textField.frame = CGRectMake(left, top, width, 31.0);
+        
+        top += 31.0;
+        top += MARGIN_Y / 2.0;
+    }
+    
+    // Buttons
+    NSUInteger numButtons = self.buttons.count;
+    CGFloat buttonMargin = (MARGIN_X / 2.0) * (numButtons - 1);
+    CGFloat buttonWidth = floorf((width - buttonMargin) / numButtons);
+    [self.buttons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, BOOL *stop) {
+        button.frame = CGRectMake(left + (idx * (MARGIN_X / 2.0)) + (idx * buttonWidth), top, buttonWidth, 43.0);
+    }];
+    
+    top += 43.0;
+    
+    // Optional Email Hyperlink
+    if (self.emailButton) {
+        top += MARGIN_Y / 2.0;
+        
+        self.emailButton.frame = CGRectMake(left, top, width, 16.0);
+        
+        top += 16.0;
+        top += MARGIN_Y / 2.0;
+    }
+    
+    top += MARGIN_Y;
+    
+    CGFloat superWidth = [[UIApplication sharedApplication] keyWindow].frame.size.width;
+    CGFloat superHeight = [[UIApplication sharedApplication] keyWindow].frame.size.height - [[UIApplication sharedApplication] statusBarFrame].size.height;
+    CGFloat newLeft = floorf((superWidth - 284) / 2.0);
+    CGFloat newTop = floorf((superHeight - top) / 2.0) + [[UIApplication sharedApplication] statusBarFrame].size.height;
+    self.frame = CGRectMake(newLeft, newTop, 284, top);
+    
+    self.backgroundView.frame = self.bounds;
 }
 
 
