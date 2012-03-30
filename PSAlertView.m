@@ -408,13 +408,15 @@ buttons = _buttons;
     
     self.transform = CGAffineTransformMakeScale(0.6, 0.6);
     [UIView animateWithDuration:0.2 animations:^{
-        self.alertWindow.alpha = 1.0;
-        self.transform = CGAffineTransformMakeScale(1.1, 1.1);
+        self.alertWindow.alpha = 0.8;
+        self.transform = CGAffineTransformMakeScale(1.05, 1.05);
     } completion:^(BOOL finished) {
         [UIView animateWithDuration:1.0/15.0 animations:^{
+            self.alertWindow.alpha = 0.9;
             self.transform = CGAffineTransformMakeScale(0.9, 0.9);
         } completion:^(BOOL finished) {
             [UIView animateWithDuration:1.0/7.5 animations:^{
+                self.alertWindow.alpha = 1.0;
                 self.transform =CGAffineTransformIdentity;
             }];
         }];
@@ -437,12 +439,14 @@ buttons = _buttons;
     NSUInteger buttonIndex = [self.buttons indexOfObjectIdenticalTo:button];
     
     NSString *textFieldValue = nil;
-    if (self.textField) {
+    if (self.textField && self.textField.text.length > 0) {
         textFieldValue = self.textField.text;
     }
+    
     if (self.completionBlock) {
         self.completionBlock(buttonIndex, textFieldValue);
     }
+    
     [self dismiss:YES];
 }
 
@@ -460,19 +464,21 @@ buttons = _buttons;
     
     UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
     
-    NSDictionary* keyboardInfo = [notification userInfo];
+    NSDictionary *keyboardInfo = [notification userInfo];
     CGRect keyboardFrame = [[keyboardInfo valueForKey:UIKeyboardFrameBeginUserInfoKey] CGRectValue];
     
     [[keyboardInfo objectForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&animationDuration];
     [[keyboardInfo objectForKey:UIKeyboardAnimationCurveUserInfoKey] getValue:&animationCurve];
     
     if (notification.name == UIKeyboardWillShowNotification || notification.name == UIKeyboardDidShowNotification) {
-        if(UIInterfaceOrientationIsPortrait(orientation))
+        if (UIInterfaceOrientationIsPortrait(orientation)) {
             keyboardHeight = keyboardFrame.size.height;
-        else
+        } else {
             keyboardHeight = keyboardFrame.size.width;
-    } else
+        }
+    } else {
         keyboardHeight = 0;
+    }
     
     CGRect orientationFrame = [UIScreen mainScreen].bounds;
     CGRect statusBarFrame = [UIApplication sharedApplication].statusBarFrame;
@@ -490,8 +496,8 @@ buttons = _buttons;
     CGFloat activeHeight = orientationFrame.size.height;
     
     activeHeight -= keyboardHeight;
-    CGFloat posY = floorf(activeHeight*0.5);
-    CGFloat posX = orientationFrame.size.width/2;
+    CGFloat posY = floorf(activeHeight * 0.5);
+    CGFloat posX = orientationFrame.size.width / 2;
     
     CGPoint newCenter;
     CGFloat rotateAngle;
@@ -499,15 +505,15 @@ buttons = _buttons;
     switch (orientation) { 
         case UIInterfaceOrientationPortraitUpsideDown:
             rotateAngle = M_PI; 
-            newCenter = CGPointMake(posX, orientationFrame.size.height-posY);
+            newCenter = CGPointMake(posX, orientationFrame.size.height - posY);
             break;
         case UIInterfaceOrientationLandscapeLeft:
-            rotateAngle = -M_PI/2.0f;
+            rotateAngle = -M_PI / 2.0f;
             newCenter = CGPointMake(posY, posX);
             break;
         case UIInterfaceOrientationLandscapeRight:
-            rotateAngle = M_PI/2.0f;
-            newCenter = CGPointMake(orientationFrame.size.height-posY, posX);
+            rotateAngle = M_PI / 2.0f;
+            newCenter = CGPointMake(orientationFrame.size.height - posY, posX);
             break;
         default: // as UIInterfaceOrientationPortrait
             rotateAngle = 0.0;
