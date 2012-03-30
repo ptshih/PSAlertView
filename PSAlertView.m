@@ -317,22 +317,6 @@ buttons = _buttons;
     return (self.buttons.count - 1);
 }
 
-- (void)email:(UIButton *)button {
-    [self.emailButton removeFromSuperview];
-    self.emailButton = nil;
-    
-    [self.buttons makeObjectsPerformSelector:@selector(removeFromSuperview)];
-    [self.buttons removeAllObjects];
-    [self addButtonWithTitle:@"Nevermind"];
-    [self addButtonWithTitle:@"Save"];
-    
-    self.titleLabel.text = @"Save For Later";
-    self.messageLabel.text = @"Enter your email address and we'll send you a link to this deal.";
-    [self addTextFieldWithPlaceholder:@"Your Email Address"];
-    
-    [self relayoutViews];
-}
-
 #pragma mark - Layout
 - (void)layoutSubviews {
     [super layoutSubviews];
@@ -399,7 +383,7 @@ buttons = _buttons;
 }
 
 
-#pragma mark - Show
+#pragma mark - Show/Dismiss
 - (void)show:(BOOL)animated {
     [[NSRunLoop currentRunLoop] runMode: NSDefaultRunLoopMode beforeDate:[NSDate date]];
     
@@ -435,6 +419,7 @@ buttons = _buttons;
     }];
 }
 
+#pragma mark - Button Actions
 - (void)buttonSelected:(UIButton *)button {
     NSUInteger buttonIndex = [self.buttons indexOfObjectIdenticalTo:button];
     
@@ -448,6 +433,22 @@ buttons = _buttons;
     }
     
     [self dismiss:YES];
+}
+
+- (void)email:(UIButton *)button {
+    [self.emailButton removeFromSuperview];
+    self.emailButton = nil;
+    
+    [self.buttons makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    [self.buttons removeAllObjects];
+    [self addButtonWithTitle:@"Nevermind"];
+    [self addButtonWithTitle:@"Save"];
+    
+    self.titleLabel.text = @"Save For Later";
+    self.messageLabel.text = @"Enter your email address and we'll send you a link to this deal.";
+    [self addTextFieldWithPlaceholder:@"Your Email Address"];
+    
+    [self relayoutViews];
 }
 
 #pragma mark - UITextFieldDelegate
