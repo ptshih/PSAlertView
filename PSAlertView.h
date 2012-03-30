@@ -8,7 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
-typedef void (^PSAlertViewCompletionBlock)(NSUInteger buttonIndex);
+typedef void (^PSAlertViewCompletionBlock)(NSUInteger buttonIndex, NSString *textFieldValue);
 
 @interface PSAlertView : UIView
 

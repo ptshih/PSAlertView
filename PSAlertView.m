@@ -334,7 +334,11 @@ buttons = _buttons;
 - (void)buttonSelected:(UIButton *)button {
     NSUInteger buttonIndex = [self.buttons indexOfObjectIdenticalTo:button];
     
-    self.completionBlock(buttonIndex);
+    NSString *textFieldValue = nil;
+    if (self.textField) {
+        textFieldValue = self.textField.text;
+    }
+    self.completionBlock(buttonIndex, textFieldValue);
     [self dismiss:YES];
 }
 
