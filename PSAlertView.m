@@ -48,13 +48,13 @@
 @end
 
 // UITextField
-@interface UITextField (PSAlertView)
+@interface PSAlertViewTextField : UITextField
 
 - (CGRect)rectWithInset:(CGSize)inset;
 
 @end
 
-@implementation UITextField (PSAlertView)
+@implementation PSAlertViewTextField
 
 - (CGRect)rectWithInset:(CGSize)inset {
     CGRect clearViewRect = [self clearButtonRectForBounds:self.bounds];
@@ -115,7 +115,7 @@
 @property (nonatomic, retain) UIImageView *backgroundView;
 @property (nonatomic, retain) UILabel *titleLabel;
 @property (nonatomic, retain) UILabel *messageLabel;
-@property (nonatomic, retain) UITextField *textField;
+@property (nonatomic, retain) PSAlertViewTextField *textField;
 @property (nonatomic, retain) NSMutableArray *buttons;
 
 @end
@@ -192,7 +192,7 @@ buttons = _buttons;
         
         // Optional Text Field
         if (textFieldPlaceholder) {
-            self.textField = [[[UITextField alloc] initWithFrame:CGRectZero] autorelease];
+            self.textField = [[[PSAlertViewTextField alloc] initWithFrame:CGRectZero] autorelease];
             self.textField.background = [[UIImage imageNamed:@"PSAlertView.bundle/TextFieldBackground.png"] stretchableImageWithLeftCapWidth:1 topCapHeight:0];
             self.textField.placeholder = textFieldPlaceholder;
             self.textField.autocorrectionType = UITextAutocorrectionTypeNo;
